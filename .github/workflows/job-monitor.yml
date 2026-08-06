@@ -27,7 +27,7 @@ jobs:
       - name: Check career pages
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          REQUEST_TIMEOUT_SECONDS: "25"
+          REQUEST_TIMEOUT_SECONDS: "8"
           LOG_LEVEL: INFO
         run: python job_monitor.py --state-file ci/state.json
       - name: Persist newly seen matching roles
