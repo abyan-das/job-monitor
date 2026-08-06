@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.abyandas.job-monitor</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/abyandas/job-monitor/.venv/bin/python</string>
+    <string>/Users/abyandas/job-monitor/job_monitor.py</string>
+    <string>--loop</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/abyandas/job-monitor</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>NetworkState</key>
+    <true/>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/abyandas/job-monitor/data/monitor.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/abyandas/job-monitor/data/monitor-error.log</string>
+</dict>
+</plist>

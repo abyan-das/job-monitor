@@ -1,0 +1,42 @@
+name: New-grad PM job monitor
+
+on:
+  schedule:
+    - cron: "3-59/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: job-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Check career pages
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          REQUEST_TIMEOUT_SECONDS: "25"
+          LOG_LEVEL: INFO
+        run: python job_monitor.py --state-file ci/state.json
+      - name: Persist newly seen matching roles
+        run: |
+          if git diff --quiet -- ci/state.json; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ci/state.json
+          git commit -m "chore: update job monitor state"
+          git push
