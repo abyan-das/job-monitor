@@ -341,6 +341,7 @@ def _jsonld_location(x: dict[str, Any]) -> str:
 
 def _discord_payloads(jobs: list[Job]) -> list[dict[str, Any]]:
     payloads = []
+    detected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     for start in range(0, len(jobs), 10):
         embeds = []
         for job in jobs[start:start + 10]:
@@ -355,6 +356,7 @@ def _discord_payloads(jobs: list[Job]) -> list[dict[str, Any]]:
                 "url": job.url,
                 "description": "\n".join(details)[:4096] or "New early-career PM role",
                 "fields": [{"name": "Company", "value": job.company[:1024], "inline": True}],
+                "footer": {"text": f"Detected by monitor: {detected_at}"},
                 "color": 0x5865F2,
             })
         payloads.append({
