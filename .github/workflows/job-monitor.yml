@@ -32,11 +32,15 @@ jobs:
         run: python job_monitor.py --state-file ci/state.json
       - name: Persist newly seen matching roles
         run: |
-          if git diff --quiet -- ci/state.json; then
+          current_month=$(date -u +%Y-%m)
+          if [ "$(cat ci/heartbeat.txt 2>/dev/null || true)" != "$current_month" ]; then
+            echo "$current_month" > ci/heartbeat.txt
+          fi
+          if git diff --quiet -- ci/state.json ci/heartbeat.txt; then
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ci/state.json
+          git add ci/state.json ci/heartbeat.txt
           git commit -m "chore: update job monitor state"
           git push
