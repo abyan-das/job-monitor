@@ -98,6 +98,13 @@ class Monitor:
     def close(self) -> None:
         self.db.close()
 
+    def sources(self) -> list[dict[str, Any]]:
+        """Return official company sources, with aggregators disabled by default."""
+        sources = list(self.config["companies"])
+        if os.getenv("ENABLE_DISCOVERY_SOURCES", "false").lower() in {"1", "true", "yes"}:
+            sources.extend(self.config.get("discovery_sources", []))
+        return sources
+
     def fetch(self, company: dict[str, Any]) -> list[Job]:
         provider = company["provider"]
         if provider == "greenhouse":
@@ -235,8 +242,7 @@ class Monitor:
         new_matches: list[Job] = []
         errors: list[str] = []
         now = datetime.now(timezone.utc).isoformat()
-        sources = self.config["companies"] + self.config.get("discovery_sources", [])
-        for company in sources:
+        for company in self.sources():
             try:
                 jobs = self.fetch(company)
                 logging.info("%s: fetched %d jobs", company["name"], len(jobs))
@@ -390,8 +396,7 @@ def run_state_file(monitor: Monitor, state_path: Path, bootstrap: bool = False) 
     seen = state.setdefault("seen", {})
     matches: dict[str, Job] = {}
     errors = []
-    sources = monitor.config["companies"] + monitor.config.get("discovery_sources", [])
-    for company in sources:
+    for company in monitor.sources():
         try:
             jobs = monitor.fetch(company)
             logging.info("%s: fetched %d jobs", company["name"], len(jobs))

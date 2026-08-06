@@ -1,6 +1,6 @@
 # New-grad PM job monitor
 
-Polls a curated 103-company watchlist, identifies early-career product-management roles, remembers every job it has seen, and sends newly discovered matches to Discord. Direct Greenhouse, Lever, Ashby, and Workday feeds are preferred; official career-page parsing is the fallback.
+Polls a curated 103-company watchlist, identifies early-career product-management roles, remembers every job it has seen, and sends newly discovered matches to Discord. Official company career pages and their publishing backends (Greenhouse, Lever, Ashby, and Workday) are checked directly. Aggregator discovery is disabled by default.
 
 ## Set up on your Mac
 
@@ -65,7 +65,7 @@ A listing must contain both:
 
 ## Source health
 
-Greenhouse, Lever, Ashby, and Workday sources use public job-board endpoints. Large companies with custom career sites use conservative HTML/structured-data extraction and may occasionally block automated requests. Every scan stores source health, including the last job count and consecutive failures. `--status` labels feeds as `OK`, `EMPTY`, or `FAIL`.
+Greenhouse, Lever, Ashby, and Workday sources use the public endpoints powering each company's official job board. They are publishing infrastructure, not delayed reposting aggregators. Companies with custom career sites are read directly using conservative HTML/structured-data extraction and may occasionally block automated requests. LinkedIn discovery is retained as an optional backup and runs only when `ENABLE_DISCOVERY_SOURCES=true`. Every local database scan stores source health, including the last job count and consecutive failures. `--status` labels feeds as `OK`, `EMPTY`, or `FAIL`.
 
 ## Discord safety
 

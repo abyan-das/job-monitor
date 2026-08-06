@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from job_monitor import Job, Monitor, _discord_payloads, _jsonld_jobs
 
@@ -17,7 +18,8 @@ class MonitorTests(unittest.TestCase):
                 "exclude_any": ["senior", "staff", "director", "product marketing", "program manager"],
                 "locations_any": []
             },
-            "companies": []
+            "companies": [{"name": "Official", "provider": "generic", "url": "https://example.com/jobs"}],
+            "discovery_sources": [{"name": "Aggregator", "provider": "generic", "url": "https://example.com/search"}]
         }
         path = Path(self.tmp.name) / "config.json"
         path.write_text(json.dumps(config))
@@ -55,6 +57,14 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual([len(p["embeds"]) for p in payloads], [10, 1])
         self.assertEqual(payloads[0]["allowed_mentions"], {"parse": []})
         self.assertEqual(payloads[0]["embeds"][0]["fields"][0]["value"], "X")
+
+    def test_discovery_sources_are_opt_in(self):
+        self.assertEqual([source["name"] for source in self.monitor.sources()], ["Official"])
+        with patch.dict("os.environ", {"ENABLE_DISCOVERY_SOURCES": "true"}):
+            self.assertEqual(
+                [source["name"] for source in self.monitor.sources()],
+                ["Official", "Aggregator"],
+            )
 
 
 if __name__ == "__main__":

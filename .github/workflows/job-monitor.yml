@@ -27,6 +27,8 @@ jobs:
       - name: Check career pages
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          # Official company pages/ATS backends are primary. Aggregators are opt-in only.
+          ENABLE_DISCOVERY_SOURCES: "false"
           REQUEST_TIMEOUT_SECONDS: "8"
           LOG_LEVEL: INFO
         run: python job_monitor.py --state-file ci/state.json
