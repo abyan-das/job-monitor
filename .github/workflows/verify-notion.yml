@@ -1,0 +1,45 @@
+name: Verify Notion recruiting connection
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: job-monitor
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - name: Verify real job delivery and duplicate prevention
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATA_SOURCE_ID: b6d69cf0-e333-4a0a-b223-938050872828
+        run: |
+          python - <<'PY'
+          from job_monitor import Job
+          from notion_sync import NotionSync, enabled, job_id
+          assert enabled(), 'Notion credentials missing'
+          job = Job('Databricks', '7586263002',
+                    'Associate Product Manager, New Grad (2027 Start)',
+                    'Bellevue, Washington; Mountain View, California; San Francisco, California',
+                    'https://databricks.com/company/careers/open-positions/job?gh_jid=7586263002',
+                    posted_at='2026-08-18T13:17:07-04:00')
+          client = NotionSync()
+          first = client.sync(job, '2026-08-05T07:10:50.077181+00:00')
+          second = client.sync(job, '2026-08-05T07:10:50.077181+00:00')
+          assert first == second, 'Duplicate prevention failed'
+          result = client.request(f'data_sources/{client.data_source}/query',
+              {'filter': {'or': [
+                  {'property': 'Job ID', 'rich_text': {'equals': job_id(job)}},
+                  {'property': 'Role Link', 'url': {'equals': job.url}}
+              ]}})
+          assert len(result['results']) == 1, 'Expected exactly one matching job'
+          print('Live Notion sync and duplicate prevention passed.')
+          print('Notion page: https://www.notion.so/' + first.replace('-', ''))
+          PY
