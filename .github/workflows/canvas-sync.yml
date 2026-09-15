@@ -1,0 +1,40 @@
+name: bCourses to Notion assignments
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Preview without changing Notion
+        type: boolean
+        default: false
+      verify_replay:
+        description: Run twice to verify duplicate prevention
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: canvas-notion-sync
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.4
+      - name: Sync assignments
+        env:
+          CANVAS_TOKEN: ${{ secrets.CANVAS_TOKEN }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          ASSIGNMENTS_DATA_SOURCE_ID: 6cf8453c-7e6e-82d8-b99a-87392f89d45d
+          CANVAS_TERM_ID: '5751'
+          DRY_RUN: ${{ inputs.dry_run }}
+          VERIFY_REPLAY: ${{ inputs.verify_replay }}
+        run: |
+          args=()
+          if [ "$DRY_RUN" = true ]; then args+=(--dry-run); fi
+          if [ "$VERIFY_REPLAY" = true ]; then args+=(--verify-replay); fi
+          python canvas_sync.py "${args[@]}"

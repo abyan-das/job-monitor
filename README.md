@@ -97,3 +97,21 @@ GitHub workflow serializes its runs. A create timeout is resolved by a fresh loo
 on the next scan, rather than automatically retrying the insert.
 
 Run regression tests with `python -m unittest -v`.
+
+## Canvas assignments → Notion
+
+`canvas_sync.py` syncs the configured Canvas semester into a Notion Assignments data source.
+It imports upcoming and undated, unsubmitted assignments, updates names/deadlines/Canvas links,
+and preserves Done, course relations, and manually selected types on existing rows.
+Canvas IDs and links prevent repeat inserts. It never writes assignment payloads to repository
+state, artifacts, or logs. Logs contain aggregate counts and sanitized failures only.
+
+The `canvas-sync.yml` manual workflow requires `CANVAS_TOKEN` and the existing `NOTION_TOKEN`.
+The Notion connection must have read, insert, and update access to Assignments. Use the
+`dry_run` input before the initial sync and `verify_replay` to check a second pass creates no
+extra rows. Schedules are enabled only after the live test succeeds. Canvas personal tokens
+expire in at most 90 days; the current setup expires December 13, 2026 and needs renewal.
+
+The sync leaves old unimported assignments and unpublished/deleted source items alone.
+It does not automatically mark tasks completed or delete Notion rows. Course term configuration
+must be changed for a new semester. Scheduled GitHub runs can be delayed by runner availability.
