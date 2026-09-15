@@ -26,6 +26,8 @@ jobs:
         run: pip install -r requirements.txt
       - name: Check career pages
         env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATA_SOURCE_ID: b6d69cf0-e333-4a0a-b223-938050872828
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           # Official company pages/ATS backends are primary. Aggregators are opt-in only.
           ENABLE_DISCOVERY_SOURCES: "false"
@@ -33,6 +35,7 @@ jobs:
           LOG_LEVEL: INFO
         run: python job_monitor.py --state-file ci/state.json
       - name: Persist newly seen matching roles
+        if: always()
         run: |
           current_month=$(date -u +%Y-%m)
           if [ "$(cat ci/heartbeat.txt 2>/dev/null || true)" != "$current_month" ]; then

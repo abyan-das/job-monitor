@@ -12,13 +12,14 @@ import re
 import sqlite3
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urljoin, urlsplit
 
 import requests
+import notion_sync
 from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -87,6 +88,9 @@ class Monitor:
         if "source" not in columns:
             self.db.execute("ALTER TABLE jobs ADD COLUMN source TEXT")
             self.db.execute("UPDATE jobs SET source=company WHERE source IS NULL")
+        if "notion_synced" not in columns:
+            # Historical rows are baseline, not a request to import every old job.
+            self.db.execute("ALTER TABLE jobs ADD COLUMN notion_synced INTEGER DEFAULT 1")
         self.db.commit()
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": USER_AGENT, "Accept": "application/json,text/html"})
@@ -261,10 +265,10 @@ class Monitor:
                     self.db.execute(
                         """INSERT INTO jobs
                         (job_key,company,external_id,title,location,url,posted_at,first_seen,
-                         matched,notified,active,last_seen,source) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                         matched,notified,active,last_seen,source,notion_synced) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                         (job.key, job.company, job.external_id, job.title, job.location,
                          job.url, job.posted_at, now, int(matched), int(bootstrap or not matched),
-                         1, now, job.source or company["name"]),
+                         1, now, job.source or company["name"], int(bootstrap or not matched)),
                     )
                 else:
                     self.db.execute(
@@ -411,15 +415,67 @@ def run_state_file(monitor: Monitor, state_path: Path, bootstrap: bool = False) 
             if monitor.matches(job):
                 matches[job.key] = job
     new_jobs = [job for key, job in matches.items() if key not in seen]
-    if new_jobs and not bootstrap:
-        send_discord(new_jobs)
     now = datetime.now(timezone.utc).isoformat()
-    for key, job in matches.items():
-        if key not in seen:
-            seen[key] = {"company": job.company, "title": job.title, "url": job.url, "first_seen": now}
-    state_path.parent.mkdir(parents=True, exist_ok=True)
-    state_path.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
+    discord_pending = state.setdefault("discord_pending", {})
+    notion_pending = state.setdefault("notion_pending", {})
+    for job in new_jobs:
+        record = {"job": {k: v for k, v in asdict(job).items() if k != "description"},
+                  "first_seen": now}
+        seen[job.key] = {"company": job.company, "title": job.title,
+                         "url": job.url, "first_seen": now}
+        if not bootstrap:
+            discord_pending[job.key] = record
+            notion_pending[job.key] = record
+    state["version"] = 2
+    save_state(state_path, state)
+    if not bootstrap:
+        if discord_pending:
+            try:
+                send_discord([Job(**r["job"]) for r in discord_pending.values()])
+                discord_pending.clear()
+                save_state(state_path, state)
+            except Exception as exc:
+                errors.append("Discord delivery failed: " + type(exc).__name__)
+                logging.error(errors[-1])
+        if notion_sync.enabled():
+            client = notion_sync.NotionSync()
+            for key, record in list(notion_pending.items())[:100]:
+                try:
+                    client.sync(Job(**record["job"]), record["first_seen"])
+                except Exception as exc:
+                    errors.append("Notion delivery failed: " + type(exc).__name__)
+                    logging.error(errors[-1])
+                    break
+                del notion_pending[key]
+                save_state(state_path, state)
     return ([] if bootstrap else new_jobs), errors
+
+
+def save_state(path, state):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
+    temporary.replace(path)
+
+
+def sync_local_notion(db_path):
+    if not notion_sync.enabled():
+        return
+    client = notion_sync.NotionSync()
+    with sqlite3.connect(db_path) as db:
+        rows = db.execute(
+            "SELECT job_key,company,external_id,title,location,url,posted_at,first_seen "
+            "FROM jobs WHERE matched=1 AND notion_synced=0 LIMIT 100"
+        ).fetchall()
+        for key, company, external_id, title, location, url, posted_at, first_seen in rows:
+            try:
+                client.sync(Job(company, external_id, title, location, url, posted_at=posted_at), first_seen)
+            except Exception as exc:
+                logging.error("Notion delivery failed: %s", type(exc).__name__)
+                break
+            db.execute("UPDATE jobs SET notion_synced=1 WHERE job_key=?", (key,))
+            db.commit()
+
 
 
 def main() -> int:
@@ -471,9 +527,14 @@ def main() -> int:
         for job in jobs:
             print(f"MATCH: {job.company} | {job.title} | {job.location} | {job.url}")
         if jobs and not args.dry_run and not args.bootstrap:
-            send_discord(jobs)
-            mark_notified(args.db, jobs)
-            logging.info("Sent Discord notification with %d role(s)", len(jobs))
+            try:
+                send_discord(jobs)
+                mark_notified(args.db, jobs)
+                logging.info("Sent Discord notification with %d role(s)", len(jobs))
+            except Exception as exc:
+                logging.error("Discord delivery failed: %s", type(exc).__name__)
+        if not args.dry_run and not args.bootstrap:
+            sync_local_notion(args.db)
         if errors:
             logging.info("Completed with %d source error(s)", len(errors))
         if not args.loop or args.bootstrap or args.dry_run:

@@ -70,3 +70,30 @@ Greenhouse, Lever, Ashby, and Workday sources use the public endpoints powering 
 ## Discord safety
 
 The monitor stores the webhook URL only in `.env`, which is gitignored. Alerts contain application-link cards and are split into batches of at most 10 embeds, matching Discord's webhook limit. Mentions are disabled. A match is marked as notified only after Discord accepts every batch, so a failed notification is retried on the next cycle.
+
+## Direct Notion recruiting sync
+
+New matching jobs are also inserted into Recruiting Tracker when `NOTION_TOKEN` and
+`NOTION_DATA_SOURCE_ID` are configured. Add `NOTION_TOKEN` as a GitHub Actions secret
+for the cloud runner. Use a Notion internal connection with read and insert content
+access, shared only with Recruiting Tracker. Never commit the token.
+
+The tracker needs Role (title), Company, Location, Job ID, Source Posted, Next Step
+(rich text), Role Link (URL), Date Found (date), and Status (select with New).
+Source Posted preserves the source's original label; some sources return an update
+time rather than a publication date. It is never used as an application deadline.
+
+Notion inserts are deduplicated using the source job ID or exact application URL.
+Existing rows are left unchanged, including user-managed application status.
+Discord and Notion have separate pending queues; a failed service is retried on
+the next scan without repeating the successful service. Pending Notion deliveries
+are retained even if the listing disappears. Old baseline jobs are not backfilled.
+The first scan after deployment starts collecting new jobs for Notion, even while
+the token is being configured. Bootstrap and dry-run do not send Notion entries.
+
+Only one live runner should target this tracker. Notion has no unique constraint,
+so parallel independent runners could race between the lookup and insert. The
+GitHub workflow serializes its runs. A create timeout is resolved by a fresh lookup
+on the next scan, rather than automatically retrying the insert.
+
+Run regression tests with `python -m unittest -v`.
