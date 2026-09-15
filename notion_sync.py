@@ -55,7 +55,6 @@ class NotionSync:
             "Job ID": {"rich_text": text(job_id(job))},
             "Source Posted": {"rich_text": text(job.posted_at)},
             "Status": {"select": {"name": "New"}},
-            "Next Step": {"rich_text": text("Review role and decide whether to apply")},
         }
         result = self.request("pages", {
             "parent": {"type": "data_source_id", "data_source_id": self.data_source},
