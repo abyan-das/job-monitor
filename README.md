@@ -109,7 +109,7 @@ state, artifacts, or logs. Logs contain aggregate counts and sanitized failures 
 The `canvas-sync.yml` manual workflow requires `CANVAS_TOKEN` and the existing `NOTION_TOKEN`.
 The Notion connection must have read, insert, and update access to Assignments. Use the
 `dry_run` input before the initial sync and `verify_replay` to check a second pass creates no
-extra rows. Schedules are enabled only after the live test succeeds. Canvas personal tokens
+extra rows. The schedule checks every 15 minutes at minutes 7, 22, 37, and 52. Live sync and replay verification passed. Canvas personal tokens
 expire in at most 90 days; the current setup expires December 13, 2026 and needs renewal.
 
 The sync leaves old unimported assignments and unpublished/deleted source items alone.

@@ -1,5 +1,7 @@
 name: bCourses to Notion assignments
 on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:
