@@ -1,4 +1,6 @@
 {
+  "discord_pending": {},
+  "notion_pending": {},
   "seen": {
     "0f26443552092281e248a3c21dfd2b3bd6a232e91a2810509b956838897553ab": {
       "company": "Databricks",
@@ -37,5 +39,5 @@
       "url": "https://databricks.com/company/careers/open-positions/job?gh_jid=7586263002"
     }
   },
-  "version": 1
+  "version": 2
 }
