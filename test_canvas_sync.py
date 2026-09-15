@@ -61,6 +61,9 @@ class SyncTests(unittest.TestCase):
     def test_date_equivalence(self):
         page={'properties':{'Deadline':{'date':{'start':'2026-10-01T00:00:00-07:00'}}}}
         self.assertEqual(changes(page,{'Deadline':{'date':{'start':'2026-10-01T07:00:00Z'}}}),{})
+    def test_notion_minute_precision(self):
+        page={'properties':{'Deadline':{'date':{'start':'2026-10-01T07:59:00Z'}}}}
+        self.assertEqual(changes(page,{'Deadline':{'date':{'start':'2026-10-01T07:59:59Z'}}}),{})
     def test_type(self):
         self.assertEqual(kind({'name':'Midterm 1','is_quiz_assignment':True}),'Exam')
         self.assertEqual(kind({'name':'Project 1'}),'Project')

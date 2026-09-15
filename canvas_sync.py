@@ -95,7 +95,10 @@ def changes(page, props):
         if key in ('title', 'rich_text'):
             same = plain(previous, key) == plain(value, key)
         elif key == 'date':
-            same = instant((previous.get('date') or {}).get('start')) == instant((value.get('date') or {}).get('start'))
+            before = instant((previous.get('date') or {}).get('start'))
+            after = instant((value.get('date') or {}).get('start'))
+            # Notion stores date property times at minute precision.
+            same = (before.replace(second=0, microsecond=0) if before else None) == (after.replace(second=0, microsecond=0) if after else None)
         else:
             same = previous.get(key) == value[key]
         if not same:
